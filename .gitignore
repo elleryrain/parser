@@ -11,3 +11,7 @@
 
 #!.yarn/cache
 .pnp.*
+cookies.json
+
+node_modules
+posts/
