@@ -2,12 +2,18 @@
   "name": "vk-group-parser",
   "packageManager": "yarn@4.6.0",
   "scripts": {
-    "dev": "tsx ./src/main.ts"
+    "dev:posts": "tsx ./src/main.ts --type=get-posts",
+    "dev:parse": "tsx ./src/main.ts --type=parse-posts"
   },
   "dependencies": {
+    "@types/yargs": "^17.0.33",
     "dotenv": "^17.2.1",
     "puppeteer": "^24.15.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0"
   }
 }
