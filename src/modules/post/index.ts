@@ -32,7 +32,7 @@ interface PostContent {
 }
 
 export class PostParser {
-  static async autoScroll(page: Page, maxAttempts: number = 5): Promise<void> {
+  static async autoScroll(page: Page, maxAttempts: number = 10): Promise<void> {
     let attempts = 0;
     let previousHeight = await page.evaluate("document.body.scrollHeight");
 
