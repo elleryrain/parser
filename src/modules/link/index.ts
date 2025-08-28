@@ -112,7 +112,6 @@ export class Link {
                 console.log(`Папка для поста ${postIdDirty} уже существует`);
               }
 
-              // Добавление новой ссылки
               if (!links.some((link) => link.postId === postIdFormatted)) {
                 links.push({
                   postId: postIdFormatted,
@@ -127,16 +126,13 @@ export class Link {
               }
             }
 
-            // Сохранение обновленного JSON
             fs.writeFileSync(linksJsonPath, JSON.stringify(links, null, 2));
           } else {
             console.log("Новых постов не найдено");
           }
 
-          // Обновление списка предыдущих постов
           previousPostIds = [...data];
 
-          // Проверка ограничения по количеству постов
           if (links.length >= maxPosts) {
             console.log(
               `Достигнуто максимальное количество постов (${maxPosts})`
@@ -144,7 +140,6 @@ export class Link {
             continueScrolling = false;
           }
 
-          // Задержка перед следующей итерацией
           if (continueScrolling) {
             await delay(intervalMs);
           }
