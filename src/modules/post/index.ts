@@ -21,6 +21,7 @@ interface Comment {
   likes: number;
   isAuthor: boolean;
   replies: Comment[];
+  images: string[]; // Новое поле для изображений в комментариях
   error?: string;
 }
 
@@ -197,6 +198,22 @@ export class PostParser {
                   ? isAuthorElement.textContent.includes("Автор")
                   : false;
 
+                // Парсинг изображений в комментарии
+                const imageElements = element.querySelectorAll(
+                  ".page_post_sized_thumbs img, .page_post_thumb_wrap"
+                );
+                const images = Array.from(imageElements)
+                  .map((el) => {
+                    if (el.tagName.toLowerCase() === "img") {
+                      return el.getAttribute("src") || "";
+                    } else {
+                      const style = el.getAttribute("style") || "";
+                      const match = style.match(/url\((.*?)\)/);
+                      return match ? match[1] : "";
+                    }
+                  })
+                  .filter(Boolean);
+
                 const repliesWrap =
                   element.nextElementSibling &&
                   element.nextElementSibling.classList.contains(
@@ -223,6 +240,7 @@ export class PostParser {
                       date: "",
                       likes: 0,
                       isAuthor: false,
+                      images: [],
                       replies: [],
                       error: err.message,
                     };
@@ -239,6 +257,7 @@ export class PostParser {
                   date,
                   likes,
                   isAuthor,
+                  images,
                   replies,
                 };
               } catch (err) {
@@ -258,6 +277,7 @@ export class PostParser {
                   date: "",
                   likes: 0,
                   isAuthor: false,
+                  images: [],
                   replies: [],
                   error: err.message,
                 };
@@ -272,7 +292,7 @@ export class PostParser {
               parseComment(element)
             );
           });
-          // console.log(comments);
+
           console.log(postContent);
           const postDir = path.join(postsDir, link.postId);
 
