@@ -21,7 +21,8 @@ interface Comment {
   likes: number;
   isAuthor: boolean;
   replies: Comment[];
-  images: string[]; // Новое поле для изображений в комментариях
+  images: string[];
+  attachedFiles: { url: string; name: string }[];
   error?: string;
 }
 
@@ -30,6 +31,7 @@ interface PostContent {
   description: string;
   images: string[];
   videos: string[];
+  attachedFiles: { url: string; name: string }[];
 }
 
 export class PostParser {
@@ -69,7 +71,6 @@ export class PostParser {
     maxPosts: number = 200
   ) {
     try {
-      // Чтение JSON-файла с ссылками
       const links: PostLink[] = JSON.parse(
         fs.readFileSync(linksJsonPath, { encoding: "utf-8" })
       );
@@ -131,7 +132,6 @@ export class PostParser {
                   .replace(/\n+/g, "\n")
               : "";
 
-            console.log(description);
             const imageElements = document.querySelectorAll(
               ".vkitPrimaryAttachment__root--C8cW1 img"
             );
@@ -152,14 +152,28 @@ export class PostParser {
               })
               .filter(Boolean);
 
-            return { postId, description, images, videos };
+            const fileElements = document.querySelectorAll(
+              ".vkitChipAttachment__root--JiPM5 a"
+            );
+            const attachedFiles = Array.from(fileElements)
+              .map((el) => {
+                const url = el.getAttribute("href") || "";
+                const nameElement = el.querySelector(
+                  ".vkuiEllipsisText__content"
+                );
+                const name = nameElement ? nameElement.textContent.trim() : "";
+                return { url, name };
+              })
+              .filter((file) => file.url && file.name);
+
+            return { postId, description, images, videos, attachedFiles };
           }, link.postId);
 
           const comments: any = await page.evaluate(() => {
             window.parseComment = function (element) {
               try {
                 const commentId = element.getAttribute("data-post-id") || "";
-                console.log(`Парсинг комментария ${commentId}`); // Логирование для отладки
+                console.log(`Парсинг комментария ${commentId}`);
 
                 const authorElement = element.querySelector(
                   ".reply_author .author"
@@ -198,21 +212,43 @@ export class PostParser {
                   ? isAuthorElement.textContent.includes("Автор")
                   : false;
 
-                // Парсинг изображений в комментарии
                 const imageElements = element.querySelectorAll(
                   ".page_post_sized_thumbs img, .page_post_thumb_wrap"
                 );
                 const images = Array.from(imageElements)
                   .map((el) => {
+                    let url = "";
                     if (el.tagName.toLowerCase() === "img") {
-                      return el.getAttribute("src") || "";
+                      url = el.getAttribute("src") || "";
                     } else {
                       const style = el.getAttribute("style") || "";
                       const match = style.match(/url\((.*?)\)/);
-                      return match ? match[1] : "";
+                      url = match ? match[1] : "";
                     }
+                    if (url.includes("?")) {
+                      const [base, query] = url.split("?");
+                      const params = query.split("&").filter((param) => {
+                        const [key] = param.split("=");
+                        return key !== "cs";
+                      });
+                      return params.length > 0
+                        ? `${base}?${params.join("&")}`
+                        : base;
+                    }
+                    return url;
                   })
                   .filter(Boolean);
+
+                const fileElements = element.querySelectorAll(
+                  ".page_doc_row a.page_doc_title"
+                );
+                const attachedFiles = Array.from(fileElements)
+                  .map((el) => {
+                    const url = el.getAttribute("href") || "";
+                    const name = el.textContent.trim();
+                    return { url, name };
+                  })
+                  .filter((file) => file.url && file.name);
 
                 const repliesWrap =
                   element.nextElementSibling &&
@@ -241,6 +277,7 @@ export class PostParser {
                       likes: 0,
                       isAuthor: false,
                       images: [],
+                      attachedFiles: [],
                       replies: [],
                       error: err.message,
                     };
@@ -258,6 +295,7 @@ export class PostParser {
                   likes,
                   isAuthor,
                   images,
+                  attachedFiles,
                   replies,
                 };
               } catch (err) {
@@ -266,7 +304,7 @@ export class PostParser {
                     "data-post-id"
                   )}: ${err.message}`
                 );
-                console.log(`HTML комментария: ${element.outerHTML}`); // Логирование HTML для отладки
+                console.log(`HTML комментария: ${element.outerHTML}`);
                 return {
                   commentId: element.getAttribute("data-post-id") || "",
                   author: "",
@@ -278,6 +316,7 @@ export class PostParser {
                   likes: 0,
                   isAuthor: false,
                   images: [],
+                  attachedFiles: [],
                   replies: [],
                   error: err.message,
                 };
@@ -306,6 +345,7 @@ export class PostParser {
             postId: postContent.postId,
             images: postContent.images,
             videos: postContent.videos,
+            attachedFiles: postContent.attachedFiles,
           };
 
           fs.writeFileSync(
@@ -313,7 +353,7 @@ export class PostParser {
             JSON.stringify(postContentJson, null, 2)
           );
           console.log(
-            `Сохранен контент поста ${link.postId}: ${postContent.images.length} картинок, ${postContent.videos.length} видео`
+            `Сохранен контент поста ${link.postId}: ${postContent.images.length} картинок, ${postContent.videos.length} видео, ${postContent.attachedFiles.length} прикреплённых файлов`
           );
 
           fs.mkdirSync(postDir, { recursive: true });
